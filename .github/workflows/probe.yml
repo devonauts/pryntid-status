@@ -1,0 +1,39 @@
+# Probe Prynt from outside our network every 5 minutes and publish status.json on the `data` branch
+# (one commit, rewritten each run: the git history does not grow). index.html on Pages reads it.
+name: probe
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: probe
+  cancel-in-progress: false
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 (pinned by SHA)
+      - name: previous state (data branch)
+        run: |
+          mkdir -p data
+          if git fetch --depth=1 origin data 2>/dev/null; then
+            for f in history.jsonl alerts.json; do git show "origin/data:$f" > "data/$f" 2>/dev/null || rm -f "data/$f"; done
+          fi
+      - name: probe
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_THREAD_ID: ${{ secrets.TELEGRAM_THREAD_ID }}
+        run: python3 -I probe.py --conf components.json --state data
+      - name: publish to the data branch
+        run: |
+          cd data
+          git init -q -b data
+          git config user.name "status-probe"
+          git config user.email "status-probe@users.noreply.github.com"
+          git add status.json history.jsonl alerts.json
+          git commit -q -m "probe $(date -u +%FT%TZ)"
+          git push -q --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" data

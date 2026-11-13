@@ -1,0 +1,29 @@
+{
+  "public_url": "https://status.pryntid.com",
+  "slow_seconds": 5,
+  "timeout_seconds": 12,
+  "components": [
+    {
+      "id": "api",
+      "name": { "en": "Identification API", "es": "API de identificación" },
+      "description": { "en": "Device ID, events and Reveal ingest (api.pryntid.com)", "es": "ID de dispositivo, eventos e ingesta de Reveal (api.pryntid.com)" },
+      "url": "https://api.pryntid.com/v1/health",
+      "json": { "status": "ok" },
+      "critical": true
+    },
+    {
+      "id": "console",
+      "name": { "en": "Console", "es": "Consola" },
+      "description": { "en": "Customer dashboard (app.pryntid.com)", "es": "Panel de clientes (app.pryntid.com)" },
+      "url": "https://app.pryntid.com/",
+      "marker": "Prynt"
+    },
+    {
+      "id": "web",
+      "name": { "en": "Website & docs", "es": "Sitio web y documentación" },
+      "description": { "en": "pryntid.com", "es": "pryntid.com" },
+      "url": "https://pryntid.com/",
+      "marker": "Prynt"
+    }
+  ]
+}

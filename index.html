@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self'; connect-src https://raw.githubusercontent.com; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prynt Status</title>
+<meta name="description" content="Live status and 90-day uptime of Prynt: identification API, console and website, measured from outside our network every 5 minutes.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="color-scheme" content="light dark">
+<style>
+:root{--bg:#f5f5f7;--card:#fff;--ink:#1d1d1f;--muted:#6e6e73;--line:#e5e5ea;--ok:#1f9d55;--warn:#d97706;--bad:#dc2626;--none:#d2d2d7;--soft:#f0f0f3}
+@media (prefers-color-scheme:dark){:root{--bg:#000;--card:#161618;--ink:#f5f5f7;--muted:#98989d;--line:#2c2c2e;--ok:#30d158;--warn:#ffb340;--bad:#ff6961;--none:#3a3a3c;--soft:#1f1f22}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:32px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:28px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:17px;color:inherit;text-decoration:none}
+.brand img{width:28px;height:28px}
+.lang{background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer}
+.hero{border-radius:16px;padding:22px 24px;color:#fff;display:flex;align-items:center;gap:14px;margin-bottom:24px}
+.hero.ok{background:var(--ok)}.hero.degraded{background:var(--warn)}.hero.partial{background:var(--warn)}.hero.major{background:var(--bad)}.hero.unknown{background:var(--muted)}
+.hero h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+.hero p{margin:2px 0 0;opacity:.9;font-size:13px}
+.dot{width:12px;height:12px;border-radius:50%;background:#fff;flex:none;box-shadow:0 0 0 5px rgba(255,255,255,.25)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:6px 22px;margin-bottom:24px}
+.card h2{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:16px 0 4px}
+.comp{padding:18px 0;border-top:1px solid var(--line)}
+.comp:first-of-type{border-top:0}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.name{font-weight:600}
+.desc{color:var(--muted);font-size:13px}
+.st{font-size:13px;font-weight:600;white-space:nowrap}
+.st.up{color:var(--ok)}.st.slow{color:var(--warn)}.st.down{color:var(--bad)}
+.bars{display:flex;gap:2px;height:30px;margin:12px 0 6px}
+.bars i{flex:1;border-radius:2px;background:var(--none);min-width:2px}
+.bars i.g{background:var(--ok)}.bars i.y{background:var(--warn)}.bars i.r{background:var(--bad)}
+.bars i:hover{opacity:.7}
+.legend{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;gap:8px;flex-wrap:wrap}
+.inc{padding:14px 0;border-top:1px solid var(--line);font-size:14px}
+.inc:first-of-type{border-top:0}
+.inc b{font-weight:600}
+.inc .when{color:var(--muted);font-size:13px}
+.empty{color:var(--muted);padding:14px 0;font-size:14px}
+.note{background:var(--soft);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--muted);margin-bottom:20px}
+footer{color:var(--muted);font-size:12px;text-align:center;line-height:1.7}
+footer a{color:inherit}
+#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:6px 9px;border-radius:7px;display:none;z-index:9;white-space:nowrap}
+@media (max-width:520px){.bars{gap:1px}.hero{padding:18px}.card{padding:4px 16px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="https://pryntid.com"><img src="favicon.svg" alt=""><span data-i="brand">Prynt Status</span></a>
+    <button class="lang" id="lang" type="button">ES</button>
+  </header>
+  <div id="app"><div class="hero unknown"><span class="dot"></span><div><h1 data-i="loading">Loading…</h1></div></div></div>
+  <footer>
+    <div data-i="how">Measured from outside our network (GitHub Actions) every 5 minutes. A check fails on a non-2xx/3xx answer, a timeout, or a wrong response body, and is re-checked after 3 seconds before it counts.</div>
+    <div><a href="https://pryntid.com">pryntid.com</a> · <a href="https://github.com/devonauts/pryntid-status">GitHub</a></div>
+  </footer>
+</div>
+<div id="tip"></div>
+<script>
+(function(){
+var DATA="https://raw.githubusercontent.com/devonauts/pryntid-status/data/status.json";
+var T={
+en:{brand:"Prynt Status",loading:"Loading…",ok:"All systems operational",degraded:"Degraded performance",partial:"Partial outage",major:"Major outage",unknown:"Status unavailable",
+ checked:"Last checked {t}",up:"Operational",slow:"Slow",down:"Down",ago90:"90 days ago",today:"Today",uptime:"{p} uptime",components:"Components",
+ incidents:"Incidents · last 30 days",noInc:"No incidents in the last 30 days.",ongoing:"Ongoing",lasted:"Lasted {m}",resolved:"Resolved",noData:"No data",
+ stale:"The last check is {m} minutes old. GitHub's scheduler sometimes runs late; data will refresh on the next check.",
+ fail:"Could not load the status data. Try again in a moment.",how:"Measured from outside our network (GitHub Actions) every 5 minutes. A check fails on a non-2xx/3xx answer, a timeout, or a wrong response body, and is re-checked after 3 seconds before it counts.",
+ down_:"{c} unavailable",min:"{n} min",h:"{h} h {m} min"},
+es:{brand:"Estado de Prynt",loading:"Cargando…",ok:"Todos los sistemas funcionan",degraded:"Rendimiento degradado",partial:"Interrupción parcial",major:"Interrupción mayor",unknown:"Estado no disponible",
+ checked:"Última comprobación {t}",up:"Operativo",slow:"Lento",down:"Caído",ago90:"Hace 90 días",today:"Hoy",uptime:"{p} disponible",components:"Componentes",
+ incidents:"Incidentes · últimos 30 días",noInc:"Sin incidentes en los últimos 30 días.",ongoing:"En curso",lasted:"Duró {m}",resolved:"Resuelto",noData:"Sin datos",
+ stale:"La última comprobación es de hace {m} minutos. El programador de GitHub a veces se retrasa; los datos se actualizarán en la próxima.",
+ fail:"No se pudieron cargar los datos de estado. Inténtalo en un momento.",how:"Medido desde fuera de nuestra red (GitHub Actions) cada 5 minutos. Una comprobación falla con una respuesta que no sea 2xx/3xx, un tiempo de espera o un contenido incorrecto, y se repite a los 3 segundos antes de contar.",
+ down_:"{c} no disponible",min:"{n} min",h:"{h} h {m} min"}};
+var L=(function(){try{var s=localStorage.getItem("lang");if(s)return s}catch(e){}return /^es\b/i.test(navigator.language||"")?"es":"en"})();
+var D=null,ERR=false;
+function t(k,v){var s=(T[L]&&T[L][k])||T.en[k]||k;for(var x in v||{})s=s.replace("{"+x+"}",v[x]);return s}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function nm(o){return o?(o[L]||o.en||""):""}
+function pct(p){return p==null?"—":(p>=99.995?"100":p.toFixed(p>=99.9?3:2).replace(/0+$/,"").replace(/\.$/,""))+"%"}
+function dur(m){return m<60?t("min",{n:m}):t("h",{h:Math.floor(m/60),m:m%60})}
+function fmt(s,o){try{return new Date(s).toLocaleString(L==="es"?"es":"en",o||{dateStyle:"medium",timeStyle:"short"})}catch(e){return s}}
+function render(){
+ document.documentElement.lang=L;document.title=t("brand");
+ document.querySelectorAll("[data-i]").forEach(function(e){e.textContent=t(e.getAttribute("data-i"))});
+ document.getElementById("lang").textContent=L==="es"?"EN":"ES";
+ var app=document.getElementById("app");
+ if(!D){app.innerHTML='<div class="hero unknown"><span class="dot"></span><div><h1>'+t(ERR?"unknown":"loading")+'</h1>'+(ERR?'<p>'+t("fail")+'</p>':'')+'</div></div>';return}
+ var age=Math.round((Date.now()-new Date(D.generatedAt))/60000);
+ var h='<div class="hero '+esc(D.overall)+'"><span class="dot"></span><div><h1>'+t(D.overall)+'</h1><p>'+t("checked",{t:fmt(D.generatedAt,{timeStyle:"short",dateStyle:"medium"})})+'</p></div></div>';
+ if(age>20)h+='<div class="note">'+t("stale",{m:age})+'</div>';
+ h+='<div class="card"><h2>'+t("components")+'</h2>';
+ D.components.forEach(function(c){
+  h+='<div class="comp"><div class="row"><div><div class="name">'+esc(nm(c.name))+'</div><div class="desc">'+esc(nm(c.description))+'</div></div><div class="st '+esc(c.status)+'">'+t(c.status)+'</div></div><div class="bars">';
+  c.days.forEach(function(d){var cl=d.u==null?"":d.u>=99.9?"g":d.u>=98?"y":"r";
+   h+='<i class="'+cl+'" data-tip="'+esc(fmt(d.d+"T12:00:00Z",{dateStyle:"medium"})+" · "+(d.u==null?t("noData"):pct(d.u)))+'"></i>'});
+  h+='</div><div class="legend"><span>'+t("ago90")+'</span><span>'+t("uptime",{p:pct(c.uptime["90d"]!=null?c.uptime["90d"]:c.uptime["30d"])})+' · 24h '+pct(c.uptime["24h"])+'</span><span>'+t("today")+'</span></div></div>'});
+ h+='</div><div class="card"><h2>'+t("incidents")+'</h2>';
+ var names={};D.components.forEach(function(c){names[c.id]=nm(c.name)});
+ if(!D.incidents.length)h+='<div class="empty">'+t("noInc")+'</div>';
+ D.incidents.forEach(function(i){
+  h+='<div class="inc"><b>'+esc(t("down_",{c:names[i.component]||i.component}))+'</b> · '+(i.ongoing?'<span class="st down">'+t("ongoing")+'</span>':t("resolved"))+
+   '<div class="when">'+esc(fmt(i.start))+(i.end?' → '+esc(fmt(i.end,{timeStyle:"short"})):'')+' · '+t("lasted",{m:dur(i.minutes)})+'</div></div>'});
+ h+='</div>';app.innerHTML=h;
+}
+function load(){
+ fetch(DATA+"?t="+Math.floor(Date.now()/60000),{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()})
+  .then(function(j){D=j;ERR=false;render()},function(){ERR=!D;render()});
+}
+document.getElementById("lang").onclick=function(){L=L==="es"?"en":"es";try{localStorage.setItem("lang",L)}catch(e){}render()};
+var tip=document.getElementById("tip");
+document.addEventListener("mouseover",function(e){var s=e.target.getAttribute&&e.target.getAttribute("data-tip");if(s){tip.textContent=s;tip.style.display="block"}});
+document.addEventListener("mousemove",function(e){if(tip.style.display==="block"){tip.style.left=Math.min(e.clientX+12,innerWidth-tip.offsetWidth-8)+"px";tip.style.top=(e.clientY-36)+"px"}});
+document.addEventListener("mouseout",function(e){if(e.target.getAttribute&&e.target.getAttribute("data-tip"))tip.style.display="none"});
+render();load();setInterval(load,60000);
+})();
+</script>
+</body>
+</html>
