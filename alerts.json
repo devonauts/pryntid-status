@@ -1,0 +1,14 @@
+{
+ "api": {
+  "fails": 0,
+  "alerted": false
+ },
+ "console": {
+  "fails": 0,
+  "alerted": false
+ },
+ "web": {
+  "fails": 0,
+  "alerted": false
+ }
+}
